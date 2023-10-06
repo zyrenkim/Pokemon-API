@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pokémon API</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<style>
+   body { 
+    background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQsscDx4CMzFE9iDEOwuhWeWIt67uBgO_4acA&usqp=CAU.jpg');
+       background-size: cover;
+       background-repeat: no-repeat;
+     }
+       
+</style>
+
+    <div id="app">
+        <div id="app" class="container mx-auto mt-2 ml-10 p-10 ">
+            <div class="flex flex-col items-center sm:flex-row sm:justify-between">
+                <div>
+                    <img src="https://archives.bulbagarden.net/media/upload/4/4b/Pok%C3%A9dex_logo.png" alt="Pokemon Logo" class="w-90 h-50 mr-2">
+                </div>
+     </div>
+        <div class="mt-5">
+          <form @submit.prevent="searchPokemon">
+            <input
+              v-model="searchQuery"
+              type="text"
+              class="px-6 py-2 rounded-lg border border-gray-400 focus:outline-none focus:border-blue-500 text-black"
+              placeholder="Search Pokemon"
+            />
+            <button
+              type="submit"
+              class="ml-2 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Search
+            </button>
+          </form>
+          <div class="mt-2" v-if="showSuggestions">
+            <ul>
+              <li
+                v-for="suggestion in filteredSuggestions"
+                :key="suggestion.name"
+              >
+                <a @click="selectSuggestion(suggestion)"
+                  >{{ suggestion.name }}</a
+                >
+              </li>
+            </ul>
+            <p v-if="filteredSuggestions.length === 0 && searchQuery !== ''">
+              No results found.
+            </p>
+          </div>
+        </div>
+
+        <div
+          class="mt-5 md:flex md:justify-center w-90 h-90 border border-white"
+        >
+          <div
+            class="max-w-4xl mx-auto md:mx-0 overflow-hidden rounded-lg shadow-lg md:flex md:flex-row w-90 h-90"
+          >
+            <img
+              class="w-full md:w-1/2 h-auto"
+              :src="pokemon.imageUrl"
+              :alt="pokemon.name"
+            />
+            <div class="p-4 md:w-1/2 w-90 h-90 overflow-hidden">
+              <h2
+                class="text-lg md:text-xl lg:text-3xl font-bold text-green-500 md:justify-center"
+              >
+                {{ pokemon.name }}
+              </h2>
+              <div class="mt-2">
+                <h3
+                  class="text-sm md:text-base lg:text-lg font-semibold text-yellow-400"
+                >
+                  Abilities:
+                </h3>
+                <ul class="list-disc ml-4">
+                  <li v-for="ability in abilities" :key="ability">
+                    {{ ability }}
+                  </li>
+                </ul>
+              </div>
+              <div class="mt-2">
+                <h3
+                  class="text-sm md:text-base lg:text-lg font-bold text-yellow-400"
+                >
+                  Characteristics:
+                </h3>
+                <p class="text-sm md:text-base lg:text-lg">
+                  {{ characteristics }}
+                </p>
+              </div>
+              <div class="mt-2">
+                <h3
+                  class="text-sm md:text-base lg:text-lg font-bold text-yellow-400"
+                >
+                  Types:
+                </h3>
+                <ul class="list-disc ml-4">
+                  <li v-for="type in types" :key="type.name">
+                    {{ type.name }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-5 flex justify-center space-x-4">
+          <button
+            @click="previousPokemon"
+            class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Previous
+          </button>
+          <button
+            @click="nextPokemon"
+            class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+      const { createApp } = Vue;
+
+      createApp({
+        data() {
+          return {
+            loading: false,
+            originalPokemonIndex: 1,
+            pokemonIndex: 1,
+            pokemon: {
+              name: "",
+              imageUrl: "https://via.placeholder.com/200",
+            },
+            abilities: [],
+            characteristics: "",
+            types: [],
+            searchQuery: "",
+            suggestions: [],
+            showSuggestions: false,
+          };
+        },
+        computed: {
+          filteredSuggestions() {
+            return this.suggestions.filter((suggestion) =>
+              suggestion.name
+                .toLowerCase()
+                .includes(this.searchQuery.toLowerCase())
+            );
+          },
+        },
+        methods: {
+          async fetchPokemon() {
+            this.loading = true;
+            try {
+              const pokemonResponse = await fetch(
+                `https://pokeapi.co/api/v2/pokemon/${this.pokemonIndex}`
+              );
+              const pokemonData = await pokemonResponse.json();
+              this.pokemon.name = pokemonData.name;
+              this.pokemon.imageUrl = pokemonData.sprites.front_default;
+              this.abilities = pokemonData.abilities.map(
+                (ability) => ability.ability.name
+              );
+
+              const speciesResponse = await fetch(
+                `https://pokeapi.co/api/v2/pokemon-species/${this.pokemonIndex}`
+              );
+              const speciesData = await speciesResponse.json();
+              this.characteristics =
+                speciesData.flavor_text_entries[0].flavor_text;
+
+              const typesResponse = await fetch(
+                `https://pokeapi.co/api/v2/pokemon/${this.pokemonIndex}`
+              );
+              const typesData = await typesResponse.json();
+              this.types = typesData.types.map((type) => ({
+                name: type.type.name,
+              }));
+
+              this.loading = false;
+            } catch (error) {
+              console.error("Error fetching Pokemon:", error);
+              this.loading = false;
+            }
+          },
+          nextPokemon() {
+            this.pokemonIndex++;
+            this.fetchPokemon();
+          },
+          previousPokemon() {
+            if (this.pokemonIndex > 1) {
+              this.pokemonIndex--;
+              this.fetchPokemon();
+            }
+          },
+          searchPokemon() {
+            if (this.searchQuery.trim() === "") {
+              return;
+            }
+
+            
+            const query = this.searchQuery.toLowerCase().trim();
+
+            
+            if (!isNaN(query)) {
+              this.pokemonIndex = parseInt(query);
+            } else {
+              this.pokemonIndex = query;
+            }
+
+            this.fetchPokemon();
+
+            this.pokemonIndex = this.originalPokemonIndex;
+          },
+        },
+        mounted() {
+          this.fetchPokemon();
+        },
+      }).mount("#app");
+    </script>
+  </body>
+</html>
